@@ -1,0 +1,8 @@
+{
+  "appId": "br.com.diariodoshape.app",
+  "appName": "Diário do Shape",
+  "webDir": "www",
+  "backgroundColor": "#050506",
+  "ios": { "contentInset": "never", "backgroundColor": "#050506" },
+  "android": { "backgroundColor": "#050506" }
+}

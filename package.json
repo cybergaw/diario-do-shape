@@ -1,0 +1,23 @@
+{
+  "name": "diario-do-shape",
+  "version": "1.0.0",
+  "description": "Diário do Shape: peso, bioimpedância, treinos e alimentação",
+  "scripts": {
+    "sync": "npx cap sync",
+    "assets": "npx @capacitor/assets generate --ios --android --iconBackgroundColor '#050506' --iconBackgroundColorDark '#050506' --splashBackgroundColor '#050506' --splashBackgroundColorDark '#050506'"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/cli": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2",
+    "@fontsource/doto": "^5.3.0",
+    "@fontsource/hanken-grotesk": "^5.3.0",
+    "@supabase/supabase-js": "^2.118.0"
+  },
+  "private": true,
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
+  }
+}

@@ -1,0 +1,68 @@
+# Build na nuvem do Diário do Shape (iOS e Android), sem precisar de Mac.
+# Antes de rodar, siga o guia de publicação para cadastrar no Codemagic:
+#  - a chave da App Store Connect (integração com nome "Diario do Shape ASC")
+#  - o keystore do Android (referência "diario_keystore")
+#  O Android gera o arquivo .aab para você baixar e enviar no Google Play Console.
+
+workflows:
+  ios:
+    name: iOS · App Store
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: Diario do Shape ASC
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: br.com.diariodoshape.app
+      vars:
+        APP_STORE_APPLE_ID: 0000000000   # troque pelo "Apple ID" do app na App Store Connect
+      node: 20
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Instalar dependências
+        script: npm ci
+      - name: Gerar ícones e telas de abertura
+        script: npm run assets
+      - name: Sincronizar o app com o projeto iOS
+        script: npx cap sync ios
+      - name: Configurar assinatura
+        script: xcode-project use-profiles
+      - name: Número do build
+        script: |
+          cd ios/App
+          LATEST=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" || echo 0)
+          agvtool new-version -all $((LATEST + 1))
+      - name: Gerar o .ipa
+        script: xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+
+  android:
+    name: Android · Google Play
+    instance_type: mac_mini_m2   # as máquinas Linux não têm minutos grátis no plano gratuito
+    max_build_duration: 45
+    environment:
+      android_signing:
+        - diario_keystore
+      node: 20
+      java: 17
+    scripts:
+      - name: Instalar dependências
+        script: npm ci
+      - name: Gerar ícones e telas de abertura
+        script: npm run assets
+      - name: Sincronizar o app com o projeto Android
+        script: npx cap sync android
+      - name: Gerar o .aab
+        script: |
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.aab

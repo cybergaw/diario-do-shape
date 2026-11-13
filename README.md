@@ -19,4 +19,11 @@ Com o arquivo vazio, o app roda em modo de teste, com os dados só no aparelho.
 
 Para ver o app no computador, abra `www/index.html` no Chrome.
 
+## Versão web para testes
+
+A pasta `docs/app/` é uma cópia de `www/` publicada pelo GitHub Pages em
+https://cybergaw.github.io/diario-do-shape/app/ — dá para usar no celular pelo navegador
+(e adicionar à tela de início) antes de publicar nas lojas.
+Depois de mudar algo em `www/`, rode `npm run web` para atualizar a cópia.
+
 O passo a passo completo de publicação está no "Guia de publicação do Diário do Shape".

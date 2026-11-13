@@ -4,7 +4,8 @@
   "description": "Diário do Shape: peso, bioimpedância, treinos e alimentação",
   "scripts": {
     "sync": "npx cap sync",
-    "assets": "npx @capacitor/assets generate --ios --android --iconBackgroundColor '#050506' --iconBackgroundColorDark '#050506' --splashBackgroundColor '#050506' --splashBackgroundColorDark '#050506'"
+    "assets": "npx @capacitor/assets generate --ios --android --iconBackgroundColor '#050506' --iconBackgroundColorDark '#050506' --splashBackgroundColor '#050506' --splashBackgroundColorDark '#050506'",
+    "web": "rm -rf docs/app && cp -r www docs/app"
   },
   "license": "UNLICENSED",
   "dependencies": {

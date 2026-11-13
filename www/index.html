@@ -280,6 +280,8 @@ a{color:var(--accent)}
 .dias{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
 .dia{flex-direction:row;align-items:center;gap:8px}.dia span{width:30px;flex:none;color:var(--ink)}
 .exh input{flex:1}
+.dicas{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px;font-size:15px}
+.lbl.q{font-size:15px;color:var(--ink);font-weight:500}
 /* blocos de composição corporal */
 .tiles{gap:10px}
 .tile{border-radius:22px;padding:14px 14px 12px;min-height:108px;justify-content:space-between;color:#fff;--muted:rgba(255,255,255,.78);--ink:#fff}
@@ -683,7 +685,7 @@ async function authGo(){const A=D.auth,email=(A.email||'').trim().toLowerCase();
   }catch(e){A.erro=ERR(e&&e.message)}
   A.busy=false;A.senha='';render()}
 function vAuth(){const A=D.auth;
-  const tit={entrar:'Bem-vinda de volta',criar:'Comece seu diário',esqueci:'Recuperar senha',codigo:'Nova senha'}[A.modo];
+  const tit={entrar:'Que bom te ver por aqui',criar:'Comece seu diário',esqueci:'Recuperar senha',codigo:'Nova senha'}[A.modo];
   const txt={entrar:'Entre para ver seus treinos, sua comida e sua evolução.',criar:'Acompanhe peso, bioimpedância, treinos e alimentação num só lugar.',esqueci:'Vamos enviar um código de 6 dígitos para o seu e-mail.',codigo:'Digite o código que chegou no seu e-mail e escolha uma senha nova.'}[A.modo];
   const bt={entrar:'Entrar',criar:'Criar conta',esqueci:'Enviar código',codigo:'Salvar nova senha'}[A.modo];
   return `<section class="card g g-pink"><h2>${tit}</h2><p class="note">${txt}</p></section>
@@ -735,7 +737,7 @@ function divisao(R){const d=+R.dias,f=R.foco||[],inf=f.includes('gluteos')||f.in
   if(d===5)return ['Peito, ombro e tríceps','Pernas e glúteos','Costas e bíceps','Posterior e glúteos',inf?'Inferiores A':'Corpo inteiro A'];
   return ['Empurrar A','Puxar A','Pernas A','Empurrar B','Puxar B','Pernas B']}
 function gerarPlano(R){
-  const N={30:4,45:5,60:6,75:7}[R.tempo]||6,les=R.lesao||[],usados={},treinos={};
+  const N=Math.min({30:4,45:5,60:6,75:7}[R.tempo]||6,R.exp==='ini'?5:9),les=R.lesao||[],usados={},treinos={};
   const pref={maquinas:{m:3,h:0,c:1},misto:{m:1,h:1,c:1},livres:{m:0,h:3,c:1}}[R.equip]||{m:1,h:1,c:1};
   const pode=([g,t,n,comp,ev])=>!ev.some(x=>les.includes(x))&&(n<2||R.exp==='ava'||(R.exp==='int'&&R.equip==='livres'));
   divisao(R).forEach(nome=>{
@@ -745,7 +747,7 @@ function gerarPlano(R){
     for(const s of slots){if(dia.length>=N)break;const g=s.replace('*',''),quer=s.endsWith('*');
       let melhor=null,nota=-1e9;
       Object.entries(EXMETA).forEach(([nm,m],i)=>{if(m[0]!==g||dia.includes(nm)||!pode(m))return;
-        const sc=(pref[m[1]]||0)+(quer?(m[3]?3:-1):(m[3]?0:1))-(usados[nm]||0)*2-i*0.001;if(sc>nota){nota=sc;melhor=nm}});
+        const sc=(pref[m[1]]||0)+(quer?(m[3]?3:-1):(m[3]?0:1))-(usados[nm]||0)*(R.exp==='ini'?1:2)-i*0.001;if(sc>nota){nota=sc;melhor=nm}});
       if(melhor){dia.push(melhor);usados[melhor]=(usados[melhor]||0)+1}}
     if((R.foco||[]).includes('abdomen')&&!dia.some(x=>EXMETA[x][0]==='core')){const c=Object.keys(EXMETA).find(x=>EXMETA[x][0]==='core'&&pode(EXMETA[x]));if(c)dia.push(c)}
     treinos[nome]=dia.map((x,i)=>[x,i]).sort((p,q)=>(EXMETA[q[0]][3]-EXMETA[p[0]][3])||(p[1]-q[1])).map(x=>x[0])});
@@ -755,38 +757,50 @@ function gerarPlano(R){
   return {semana,treinos}}
 const ONB_OPTS={
   sexo:[['f','Feminino'],['m','Masculino']],
-  exp:[['ini','Comecei agora ou menos de 6 meses'],['int','De 6 meses a 2 anos'],['ava','Mais de 2 anos']],
-  dias:[['2','2 dias'],['3','3 dias'],['4','4 dias'],['5','5 dias'],['6','6 dias']],
-  tempo:[['30','30 min'],['45','45 min'],['60','1 hora'],['75','Mais de 1 hora']],
-  equip:[['maquinas','Prefiro máquinas'],['misto','Máquinas e halteres'],['livres','Prefiro pesos livres']],
-  foco:[['gluteos','Glúteos'],['pernas','Pernas'],['bracos','Braços'],['costas','Costas e postura'],['abdomen','Abdômen']],
-  lesao:[['joelho','Joelho'],['ombro','Ombro'],['lombar','Lombar']],
-  cardio:[['0','Não quero'],['2','2 vezes'],['3','3 vezes']]};
+  obj:[['perder','Emagrecer'],['ganhar','Ganhar músculos'],['manter','Ter mais saúde e disposição']],
+  exp:[['ini','Estou começando agora'],['int','Já treino há um tempo'],['ava','Treino há bastante tempo']],
+  dias:[['2','2 dias'],['3','3 dias'],['4','4 dias'],['5','5 dias'],['6','6 dias'],['ns','Ainda não sei']],
+  tempo:[['30','30 min'],['45','45 min'],['60','1 hora'],['75','Mais de 1 hora'],['ns','Não sei']],
+  equip:[['maquinas','Nas máquinas'],['misto','Tanto faz'],['livres','Com halteres e barras'],['ns','Não sei a diferença']],
+  foco:[['gluteos','Glúteos'],['pernas','Pernas'],['bracos','Braços'],['costas','Costas e postura'],['abdomen','Barriga']],
+  lesao:[['joelho','Joelho'],['ombro','Ombro'],['lombar','Lombar (parte de baixo das costas)']],
+  cardio:[['0','Agora não'],['2','2 vezes'],['3','3 vezes'],['sug','Me sugira']]};
+// transforma "não sei" em escolhas seguras para quem está começando
+function resolver(O){const ini=O.exp!=='int'&&O.exp!=='ava';
+  return {exp:O.exp||'ini',dias:O.dias==='ns'?'3':O.dias,tempo:O.tempo==='ns'?(ini?'45':'60'):O.tempo,
+    equip:O.equip==='ns'?'maquinas':O.equip,foco:O.foco||[],lesao:(O.lesao||[]).filter(x=>x!=='nenhuma'),
+    cardio:O.cardio==='sug'?(!ini&&O.obj==='perder'?'3':'2'):O.cardio}}
 function vOnb(){const O=D.onb,ref=!!O.refazer,p=O.passo||1;
   const ch=(k,v,l)=>`<button class="chip ${String(O[k])===String(v)?'on':''}" data-act="onb:${k}|${v}">${l}</button>`;
   const mc=(k,v,l)=>`<button class="chip ${(O[k]||[]).includes(v)?'on':''}" data-act="onbT:${k}|${v}" aria-pressed="${(O[k]||[]).includes(v)}">${l}</button>`;
-  const grp=(t,k,multi,sub)=>`<div class="stat" style="gap:6px"><span class="lbl">${t}</span>${sub?`<span class="note">${sub}</span>`:''}<div class="chips">${ONB_OPTS[k].map(([v,l])=>(multi?mc:ch)(k,v,l)).join('')}</div></div>`;
+  const grp=(t,k,multi,sub,extra='')=>`<div class="stat" style="gap:6px"><span class="lbl q">${t}</span>${sub?`<span class="note">${sub}</span>`:''}<div class="chips">${ONB_OPTS[k].map(([v,l])=>(multi?mc:ch)(k,v,l)).join('')}${extra}</div></div>`;
   const tot=3,ini=ref?2:1,barra=`<div class="bar"><i style="width:${(p-ini+1)/(tot-ini+1)*100}%"></i></div>`;
-  const tit={1:'Sobre você',2:'Seu treino',3:'Foco e cuidados'}[p];
+  const tit={1:'Sobre você',2:'Sua rotina',3:'Do seu jeito'}[p];
   let corpo='';
-  if(p===1)corpo=`<div class="fields">${inp('onb.nome','Seu nome','autocomplete="given-name"')}</div>
-    ${grp('Sexo','sexo')}
-    <div class="fields">${inp('onb.idade','Idade','inputmode="numeric"')}${inp('onb.altura','Altura (cm)','inputmode="numeric"')}${inp('onb.peso','Peso atual (kg)',dec)}</div>
-    <div class="stat" style="gap:6px"><span class="lbl">Seu objetivo</span><div class="chips">${ch('obj','perder','Perder gordura')}${ch('obj','ganhar','Ganhar massa')}${ch('obj','manter','Manter e definir')}</div></div>`;
-  if(p===2)corpo=`${grp('Há quanto tempo você treina musculação?','exp')}${grp('Quantos dias por semana você consegue treinar?','dias')}${grp('Quanto tempo por treino?','tempo')}${grp('Que tipo de exercício você prefere?','equip',false,'Máquinas guiam o movimento e são mais fáceis de executar.')}`;
-  if(p===3)corpo=`${grp('Quer dar mais atenção a alguma parte?','foco',true,'Escolha até 2, ou nenhuma para um treino equilibrado.')}${grp('Sente dor ou tem lesão em algum lugar?','lesao',true,'O plano evita exercícios que forçam essas regiões. Com dor, procure um profissional antes de treinar.')}${grp('Quantas vezes de cardio por semana?','cardio')}`;
-  return `${ref||p>1?'':`<section class="card g g-green"><h3>Vamos começar</h3><h2>${p===1?'Monte seu diário em 2 minutos':tit}</h2><p class="note">${p===1?'Com suas respostas o app calcula suas metas e monta um treino só seu. Você pode mudar tudo depois.':'Estas respostas definem a divisão, os exercícios e a quantidade de cada treino.'}</p></section>`}
+  if(p===1)corpo=`<div class="fields">${inp('onb.nome','Como podemos te chamar?','autocomplete="given-name"')}</div>
+    ${grp('Sexo','sexo',false,'Usamos só para calcular suas metas.')}
+    <div class="fields">${inp('onb.idade','Idade','inputmode="numeric"')}${inp('onb.altura','Altura (cm)','inputmode="numeric" placeholder="ex: 165"')}${inp('onb.peso','Peso (kg)',dec+' placeholder="ex: 68,5"')}</div>
+    <p class="note">Seus dados ficam só com você.</p>
+    ${grp('O que você mais quer agora?','obj')}`;
+  if(p===2)corpo=`${ref?'':`<div class="hint"><span>Não sabe responder? Tudo bem, a gente escolhe por você um começo leve e seguro.</span><button class="small" style="align-self:flex-start" data-act="onbSimples">Escolham por mim</button></div>`}
+    ${grp('Você já faz musculação?','exp')}
+    ${grp('Quantos dias por semana cabem na sua rotina?','dias',false,'Melhor começar com menos e aumentar depois.')}
+    ${grp('Quanto tempo você tem em cada ida à academia?','tempo')}
+    ${grp('Onde você se sente mais à vontade?','equip',false,'As máquinas guiam o movimento e são as mais fáceis para começar. Halteres e barras pedem um pouco mais de prática.')}`;
+  if(p===3)corpo=`${grp('Tem alguma parte do corpo que você gostaria de trabalhar mais?','foco',true,'Pode escolher até 2.',`<button class="chip ${(O.foco||[]).length?'':'on'}" data-act="onbLimpa:foco">Quero tudo equilibrado</button>`)}
+    ${grp('Sente algum incômodo ou dor ao se movimentar?','lesao',true,'Assim o app evita exercícios que forçam essas regiões. Se a dor for forte, procure um médico ou fisioterapeuta antes de começar.',`<button class="chip ${(O.lesao||[]).includes('nenhuma')?'on':''}" data-act="onbNenhuma">Não sinto nada</button>`)}
+    ${grp('E atividades como caminhada, bike ou esteira?','cardio',false,'Quantas vezes por semana, além da musculação.')}`;
+  return `${ref||p>1?'':`<section class="card g g-green"><h3>Boas-vindas</h3><h2>Vamos montar seu diário</h2><p class="note">São 3 perguntinhas rápidas. Com elas o app sugere suas metas e um treino do seu tamanho. Dá para mudar tudo depois, a qualquer momento.</p></section>`}
   <section class="card">${ref?`<div class="row between"><h2>Refazer meu plano</h2><button class="ghost small" data-act="onbSair">Cancelar</button></div>`:''}
     <div class="row between"><h3>${tit}</h3><span class="note">${p-ini+1} de ${tot-ini+1}</span></div>${barra}
     ${corpo}
     ${O.erro?`<div class="hint keep"><span>${esc(O.erro)}</span></div>`:''}
-    <div class="setbtns">${p>ini?`<button data-act="onbPasso:-1">Voltar</button>`:''}</div>
-    ${p<3?`<button class="primary go" data-act="onbPasso:1">Continuar</button>`:`<button class="primary go" data-act="onbFim" ${ref?'data-confirm="1"':''}>${ref?'Trocar meu plano':'Criar meu plano'}</button>`}
-    ${ref?'<p class="note">O plano atual será substituído. Seu histórico de treinos não muda.</p>':'<p class="note">Este app ajuda a acompanhar seus hábitos e não substitui a orientação de médico, nutricionista ou educador físico.</p>'}
+    ${p>ini?`<div class="setbtns"><button data-act="onbPasso:-1">Voltar</button></div>`:''}
+    ${p<3?`<button class="primary go" data-act="onbPasso:1">Continuar</button>`:`<button class="primary go" data-act="onbFim" ${ref?'data-confirm="1"':''}>${ref?'Trocar meu plano':'Montar meu plano'}</button>`}
+    ${ref?'<p class="note">O plano atual será substituído. Seu histórico de treinos não muda.</p>':p===3?'<p class="note">O app ajuda a acompanhar seus hábitos e não substitui médico, nutricionista ou educador físico.</p>':''}
   </section>
   ${ref||p>1?'':`<section class="card"><h3>Já usava o Diário do Shape?</h3><p class="note">Se você exportou seus dados de outra versão, importe aqui para continuar de onde parou.</p><label class="btnlike" for="f-import">Importar dados</label><input type="file" id="f-import" accept="application/json,.json" hidden></section>
   ${DEMO?'':`<button class="ghost" data-act="sair">Sair da conta</button>`}`}`}
-
 function aplicarPlano(){const pl=(S.docs.perfil&&S.docs.perfil.plano)||{semana:SEMANA_PADRAO,treinos:PLANO_PADRAO};
   PLANO={...pl.treinos,'Cardio':[]};SEMANA={0:null,...pl.semana};TPL=Object.keys(PLANO)}
 const getPl=()=>{const p=S.docs.perfil||{};if(p.plano)return clone(p.plano);const t={...PLANO_PADRAO};delete t.Cardio;return {semana:{...SEMANA_PADRAO},treinos:clone(t)}};
@@ -846,7 +860,7 @@ const BIO0=()=>({date:today(),kg:'',cintura:'',gord:'',musc:'',visc:'',tmb:'',id
 const D={tab:'hoje',peso:BIO0(),
   food:{day:today(),ref:'Almoço',nome:'',kcal:'',p:'',c:'',g:'',q:'',sel:'',n:'',med:'0',editId:'',custom:false,cal:false,mes:today().slice(0,7),cn:'',cu:'',cp:'100',ck:'',cP:'',cc:'',cg:''},treino:null,perfil:null,guia:'',sx:0,sin:{},restEnd:0,restTot:90,restDur:90,resumo:null,planoAberto:false,
   auth:{modo:'entrar',email:'',senha:'',codigo:'',nova:'',erro:'',ok:'',busy:false},
-  onb:{passo:1,nome:'',sexo:'f',idade:'',altura:'',peso:'',obj:'perder',exp:'ini',dias:'3',tempo:'60',equip:'maquinas',foco:[],lesao:[],cardio:'2',erro:''}};
+  onb:{passo:1,nome:'',sexo:'f',idade:'',altura:'',peso:'',obj:'perder',exp:'ini',dias:'3',tempo:'45',equip:'maquinas',foco:[],lesao:[],cardio:'2',erro:''}};
 function setPath(path,val){const ks=path.split('.');let o=D;for(let i=0;i<ks.length-1;i++)o=o[ks[i]];o[ks[ks.length-1]]=val}
 const v=path=>esc(path.split('.').reduce((o,k)=>o==null?'':o[k],D)??'');
 const inp=(path,label,extra='')=>`<label>${label}<input id="f-${path.replace(/\./g,'-')}" data-bind="${path}" value="${v(path)}" ${extra}></label>`;
@@ -967,6 +981,12 @@ function vHoje(){
   const nSem=sem.filter(d=>dias.has(d)).length,ult=ts[0];
   const letras=['S','T','Q','Q','S','S','D'];
   return `
+  ${P.triagem&&P.triagem.exp==='ini'&&!P.bemVindoOk?`<section class="card g g-blue"><h3>Para começar bem</h3><h2>Seu primeiro mês</h2>
+    <ul class="dicas"><li>Nas 2 primeiras semanas, use pesos leves. O objetivo agora é aprender os movimentos.</li>
+    <li>O peso certo é aquele em que as 2 últimas repetições ficam difíceis, mas você ainda consegue fazer com a postura certinha.</li>
+    <li>Peça ajuda a um professor da academia para regular as máquinas. Cada exercício do app tem um desenho e dicas.</li>
+    <li>Faltou um dia? Tudo bem. O que faz diferença é voltar no próximo.</li></ul>
+    <button class="primary go" data-act="bemVindoOk">Entendi</button></section>`:''}
   ${cardHoje()}
   <section class="card g g-green">
     <div class="row between"><h3>Peso atual</h3>${ws.length?`<span class="note">${fdate(ws[ws.length-1].date)}</span>`:''}</div>
@@ -1515,21 +1535,25 @@ document.addEventListener('click',e=>{
     authModo(){Object.assign(D.auth,{modo:arg,erro:'',ok:''});render()},
     authGo(){authGo()},
     onb(){const [k,v]=arg.split('|');D.onb[k]=v;render()},
-    onbT(){const [k,v]=arg.split('|');const a=D.onb[k]||[];const on=a.includes(v);if(!on&&k==='foco'&&a.length>=2)return toast('Escolha até 2 focos.');D.onb[k]=on?a.filter(x=>x!==v):[...a,v];render()},
+    onbT(){const [k,v]=arg.split('|');const a=(D.onb[k]||[]).filter(x=>x!=='nenhuma');const on=a.includes(v);if(!on&&k==='foco'&&a.length>=2)return toast('Escolha até 2 focos.');D.onb[k]=on?a.filter(x=>x!==v):[...a,v];render()},
     onbPasso(){const O=D.onb;O.erro='';if(+arg>0&&O.passo===1){const idade=num(O.idade),alt=num(O.altura),kg=num(O.peso);
         if(!(O.nome||'').trim()||!idade||!alt||!kg){O.erro='Preencha nome, idade, altura e peso.';return render()}
         if(idade<14||idade>100||alt<120||alt>230||kg<30||kg>300){O.erro='Confira os números: idade em anos, altura em centímetros e peso em quilos.';return render()}}
       O.passo=Math.max(1,Math.min(3,(O.passo||1)+(+arg)));render();window.scrollTo(0,0)},
-    refazer(){const t=(perfil().triagem)||{};Object.assign(D.onb,{exp:'ini',dias:'3',tempo:'60',equip:'maquinas',foco:[],lesao:[],cardio:'2'},t,{passo:2,refazer:true,erro:''});D.tab='triagem';render();window.scrollTo(0,0)},
+    refazer(){const t=(perfil().triagem)||{};Object.assign(D.onb,{exp:'ini',dias:'3',tempo:'45',equip:'maquinas',foco:[],lesao:[],cardio:'2'},t,t.respostas||{},{passo:2,refazer:true,erro:'',obj:perfil().objetivo||'perder'});D.tab='triagem';render();window.scrollTo(0,0)},
+    onbSimples(){Object.assign(D.onb,{exp:'ini',dias:'ns',tempo:'ns',equip:'ns',cardio:'sug',passo:3});render();window.scrollTo(0,0)},
+    onbLimpa(){D.onb[arg]=[];render()},
+    onbNenhuma(){D.onb.lesao=(D.onb.lesao||[]).includes('nenhuma')?[]:['nenhuma'];render()},
+    bemVindoOk(){put('perfil',{...perfil(),bemVindoOk:true})},
     onbSair(){D.onb.refazer=false;D.tab='treino';render()},
-    onbFim(){const O=D.onb;const resp={exp:O.exp,dias:O.dias,tempo:O.tempo,equip:O.equip,foco:O.foco||[],lesao:O.lesao||[],cardio:O.cardio};const plano=gerarPlano(resp);
-      if(O.refazer){O.refazer=false;D.tab='treino';D.planoAberto=true;put('perfil',{...perfil(),triagem:resp,plano});toast('Plano novo pronto. Confira e ajuste o que quiser.');window.scrollTo(0,0);return}
+    onbFim(){const O=D.onb;const resp=resolver(O);const plano=gerarPlano(resp);
+      if(O.refazer){O.refazer=false;D.tab='treino';D.planoAberto=true;put('perfil',{...perfil(),triagem:{...resp,respostas:{dias:O.dias,tempo:O.tempo,equip:O.equip,cardio:O.cardio}},plano});toast('Plano novo pronto. Confira e ajuste o que quiser.');window.scrollTo(0,0);return}
       const idade=num(O.idade),alt=num(O.altura),kg=num(O.peso),nome=(O.nome||'').trim();
-      const dias=+O.dias,tmb=Math.round(10*kg+6.25*alt-5*idade+(O.sexo==='m'?5:-161)),fat={2:1.375,3:1.45,4:1.55,5:1.6,6:1.7}[dias]||1.5;
+      const dias=+resp.dias,tmb=Math.round(10*kg+6.25*alt-5*idade+(O.sexo==='m'?5:-161)),fat={2:1.375,3:1.45,4:1.55,5:1.6,6:1.7}[dias]||1.5;
       const kcal=Math.max(Math.round(tmb/50)*50,Math.round(tmb*fat*({perder:0.8,ganhar:1.1,manter:1}[O.obj]||1)/50)*50);
       const prot=Math.round(kg*(O.obj==='ganhar'?2:1.8)/5)*5;
       D.tab='hoje';put('p_'+today(),{kind:'peso',date:today(),kg});
-      put('perfil',{nome,sexo:O.sexo,idade,altura:alt,pesoInicial:kg,objetivo:O.obj,metaKcal:kcal,metaProt:prot,metaPeso:null,inicio:today(),triagem:resp,plano});
+      put('perfil',{nome,sexo:O.sexo,idade,altura:alt,pesoInicial:kg,objetivo:O.obj,metaKcal:kcal,metaProt:prot,metaPeso:null,inicio:today(),triagem:{...resp,respostas:{dias:O.dias,tempo:O.tempo,equip:O.equip,cardio:O.cardio}},plano});
       toast('Tudo pronto, '+nome+'!')},
     sair(){if(SB)SB.auth.signOut()},
     excluirConta(){(async()=>{const r=await SB.rpc('excluir_conta');if(r.error)return toast('Não deu para excluir agora. Verifique a internet e tente de novo.');

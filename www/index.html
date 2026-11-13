@@ -282,6 +282,19 @@ a{color:var(--accent)}
 .exh input{flex:1}
 .dicas{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px;font-size:15px}
 .lbl.q{font-size:15px;color:var(--ink);font-weight:500}
+.scanbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;border-radius:14px;border:1px dashed var(--line);background:transparent;color:var(--ink)}
+.scan{position:fixed;inset:0;z-index:50;background:#000;color:#fff;display:flex;flex-direction:column;gap:14px;
+  padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.scan[hidden]{display:none}
+body.scan-on{overflow:hidden}
+.scan-top{display:flex;justify-content:space-between;align-items:center;font-size:17px}
+.scan-cam{position:relative;flex:1;min-height:0;border-radius:24px;overflow:hidden;background:#111}
+.scan-cam video{width:100%;height:100%;object-fit:cover;display:block}
+.scan-mira{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.scan-mira i{width:78%;max-width:340px;aspect-ratio:2/1;border:2px solid rgba(255,255,255,.9);border-radius:16px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45)}
+.scan-mira i::after{content:"";display:block;margin:auto;position:relative;top:50%;width:90%;height:2px;background:var(--accent)}
+.scan-msg{margin:0;text-align:center;font-size:15px;color:rgba(255,255,255,.85);min-height:2.9em}
+.scan-man{display:flex;gap:8px}.scan-man input{flex:1;background:#1C1C20;color:#fff}
 /* blocos de composição corporal */
 .tiles{gap:10px}
 .tile{border-radius:22px;padding:14px 14px 12px;min-height:108px;justify-content:space-between;color:#fff;--muted:rgba(255,255,255,.78);--ink:#fff}
@@ -343,6 +356,12 @@ a{color:var(--accent)}
   <button data-act="tab:metas">Metas</button>
 </nav></div>
 <div class="toast" id="toast" hidden></div>
+<div id="scan" class="scan" hidden role="dialog" aria-modal="true" aria-label="Ler código de barras">
+  <div class="scan-top"><strong>Ler código de barras</strong><button class="small" id="scan-fechar" data-act="scanFechar">Fechar</button></div>
+  <div class="scan-cam"><video id="scan-video" playsinline muted autoplay></video><div class="scan-mira"><i></i></div></div>
+  <p class="scan-msg" id="scan-msg">Aponte a câmera para o código de barras da embalagem.</p>
+  <div class="scan-man"><input id="scan-cod" inputmode="numeric" placeholder="Ou digite o número do código" aria-label="Número do código de barras" autocomplete="off"><button class="primary small" data-act="scanBuscar">Buscar</button></div>
+</div>
 <script src="config.js"></script>
 <script src="vendor/supabase.js"></script>
 <script>
@@ -1292,6 +1311,52 @@ function prevHTML(){const f=alim(D.food.sel);if(!f)return '';const qt=gramas(f,D
 function recalcular(id){const f=alim(id);if(!f)return 0;let n=0;
   byKind('comida').forEach(d=>{let mud=false;const itens=(d.itens||[]).map(i=>{if(i.fid!==id||i.qt==null)return i;mud=true;n++;const m=macro(f,i.qt);return {...i,nome:f.nome,kcal:m.kcal,p:m.p,c:m.c,g:m.g}});
     if(mud){const {id:docId,...doc}=d;put(docId,{...doc,itens})}});return n}
+
+/* ---------- código de barras (Open Food Facts) ---------- */
+const SCAN={stream:null,timer:0,reader:null,busy:false};
+const r1=x=>{const n=parseFloat(x);return isFinite(n)?Math.round(n*10)/10:0};
+function scanMsg(t){const el=$('#scan-msg');if(el)el.textContent=t}
+function carregarZXing(){return new Promise(res=>{if(window.ZXing)return res(true);const sc=document.createElement('script');sc.src='vendor/zxing.min.js';sc.onload=()=>res(!!window.ZXing);sc.onerror=()=>res(false);document.head.appendChild(sc)})}
+function pararCamera(){clearTimeout(SCAN.timer);try{SCAN.reader&&SCAN.reader.reset()}catch(e){}SCAN.reader=null;
+  if(SCAN.stream){SCAN.stream.getTracks().forEach(t=>t.stop());SCAN.stream=null}const v=$('#scan-video');if(v)v.srcObject=null}
+function fecharScanner(){pararCamera();$('#scan').hidden=true;document.body.classList.remove('scan-on')}
+async function abrirScanner(){SCAN.busy=false;$('#scan').hidden=false;document.body.classList.add('scan-on');$('#scan-cod').value='';
+  scanMsg('Aponte a câmera para o código de barras da embalagem.');
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){scanMsg('Este aparelho não deixou abrir a câmera aqui. Digite o número do código abaixo.');return}
+  try{SCAN.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false})}
+  catch(e){scanMsg('Não foi possível usar a câmera. Permita o acesso à câmera nas configurações do celular, ou digite o número do código abaixo.');return}
+  if($('#scan').hidden){pararCamera();return}
+  const v=$('#scan-video');v.srcObject=SCAN.stream;try{await v.play()}catch(e){}
+  if('BarcodeDetector' in window){try{const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});
+    const loop=async()=>{if(!SCAN.stream)return;try{const r=await det.detect(v);if(r&&r.length)return achouCodigo(r[0].rawValue)}catch(e){}SCAN.timer=setTimeout(loop,200)};loop();return}catch(e){}}
+  if(!(await carregarZXing())){scanMsg('Não deu para iniciar o leitor. Digite o número do código abaixo.');return}
+  try{const h=new Map();h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.UPC_E]);
+    SCAN.reader=new ZXing.BrowserMultiFormatReader(h,250);
+    SCAN.reader.decodeFromStream(SCAN.stream,v,(res)=>{if(res)achouCodigo(res.getText())})}catch(e){scanMsg('Não deu para iniciar o leitor. Digite o número do código abaixo.')}}
+async function achouCodigo(cod){cod=String(cod||'').replace(/\D/g,'');if(SCAN.busy)return;if(cod.length<8){scanMsg('Esse código parece incompleto. Confira os números.');return}
+  SCAN.busy=true;pararCamera();try{navigator.vibrate&&navigator.vibrate(60)}catch(e){}scanMsg('Procurando o produto '+cod+'…');
+  const r=await buscarCodigo(cod);SCAN.busy=false;
+  if(r.f){fecharScanner();if(r.novo){put('alimentos',{kind:'alimentos',itens:[...meusAlim().filter(x=>x.id!==r.f.id),r.f]})}
+    D.tab='comida';Object.assign(D.food,{custom:false,editId:'',q:''});A_pick(r.f.id);toast(r.novo?'Encontrado: '+r.f.nome:'Já cadastrado: '+r.f.nome);return}
+  if(r.erro){scanMsg('Sem conexão para buscar o produto. Tente de novo quando tiver internet.');return}
+  fecharScanner();D.tab='comida';Object.assign(D.food,{custom:true,editAlim:'',cb:cod,cn:r.nome||'',cu:'',cp:'100',ck:'',cP:'',cc:'',cg:'',sel:''});render();
+  document.getElementById('addcard')?.scrollIntoView({behavior:'smooth',block:'start'})}
+async function buscarCodigo(cod){const meu=meusAlim().find(f=>f.cb===cod);if(meu)return {f:meu};
+  try{const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),12000);
+    const r=await fetch(`https://world.openfoodfacts.org/api/v2/product/${cod}.json?fields=product_name,product_name_pt,brands,nutriments,serving_size,serving_quantity`,{signal:ctl.signal});clearTimeout(to);
+    if(r.status===404)return {nao:true};const j=await r.json();if(!j||j.status!==1||!j.product)return {nao:true};
+    const P=j.product,n=P.nutriments||{};let k=n['energy-kcal_100g'];if(k==null&&n.energy_100g!=null)k=n.energy_100g/4.184;
+    const nome=((P.product_name_pt||P.product_name||'').trim()||'Produto '+cod)+(P.brands?' · '+String(P.brands).split(',')[0].trim():'');
+    if(k==null||n.proteins_100g==null&&n.carbohydrates_100g==null&&n.fat_100g==null)return {nao:true,nome};
+    const sq=parseFloat(P.serving_quantity);
+    return {novo:true,f:{id:'cb-'+cod,nome,k:r1(k),p:r1(n.proteins_100g),c:r1(n.carbohydrates_100g),g:r1(n.fat_100g),u:sq>0&&sq<2000?[['porção da embalagem',r1(sq)]]:[],cb:cod,fonte:'Open Food Facts'}}}
+  catch(e){return {erro:true}}}
+function A_pick(id){const f=alim(id);if(!f)return;const u=usos()[id],l=u&&u.last;D.food.sel=id;D.food.editId='';
+  if(l&&l.n!=null&&(+l.med||0)<=f.u.length){D.food.n=s2(l.n);D.food.med=String(l.med||0)}else if(f.u.length){D.food.n='1';D.food.med='1'}else{D.food.n='100';D.food.med='0'}
+  render();document.getElementById('addcard')?.scrollIntoView({behavior:'smooth',block:'start'})}
+document.addEventListener('keydown',e=>{if(e.target&&e.target.id==='scan-cod'&&e.key==='Enter'){e.preventDefault();achouCodigo(e.target.value)}if(e.key==='Escape'&&!$('#scan').hidden)fecharScanner()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&!$('#scan').hidden)fecharScanner()});
+
 function updRes(){const el=document.getElementById('res');if(el)el.innerHTML=resHTML()}
 function updPrev(){const el=document.getElementById('prev');if(el)el.innerHTML=prevHTML()}
 function sugestoesComida(t,P){
@@ -1329,7 +1394,7 @@ function vComida(){
   const ontem=diaComida(addDays(day,-1)).itens.filter(i=>i.ref===F.ref),temHoje=doc.itens.some(i=>i.ref===F.ref);
   let add;
   if(F.custom)add=`<div class="selp"><div class="row between"><strong>${F.editAlim?'Editar valores':'Cadastrar alimento'}</strong><button class="ghost small" data-act="uncustom">Cancelar</button></div>
-      <p class="note">${F.editAlim?'Corrija os valores da porção abaixo. Se for um produto de marca, copie da tabela nutricional da embalagem.':'Copie da tabela nutricional da embalagem. Informe os valores da porção que está no rótulo.'}</p>
+      ${F.cb&&!F.editAlim?`<div class="hint keep"><span>Não encontramos o código ${esc(F.cb)}. Cadastre com a tabela da embalagem: da próxima vez, ele aparece direto pelo código.</span></div>`:''}<p class="note">${F.editAlim?'Corrija os valores da porção abaixo. Se for um produto de marca, copie da tabela nutricional da embalagem.':'Copie da tabela nutricional da embalagem. Informe os valores da porção que está no rótulo.'}</p>
       <div class="fields">${inp('food.cn','Nome do alimento','placeholder="ex: Pão de forma da marca X"')}</div>
       <div class="fields">${inp('food.cp','Porção (g ou ml)',dec)}${inp('food.cu','Nome da porção (opcional)','placeholder="ex: fatia, pote"')}</div>
       <div class="fields">${inp('food.ck','Calorias (kcal)',dec)}${inp('food.cP','Proteína (g)',dec)}</div>
@@ -1341,6 +1406,7 @@ function vComida(){
       <div class="row between" style="flex-wrap:nowrap"><div class="note num">Por 100 g: ${fmt(f.k,0)} kcal · P ${fmt(f.p)} · C ${fmt(f.c)} · G ${fmt(f.g)}</div><button class="ghost small" style="flex:none" data-act="editAlim">Editar valores</button></div>
       <div class="qrow"><label>Quantidade<input id="f-food-n" data-bind="food.n" value="${esc(F.n)}" ${dec}></label>
         <label>Medida<select id="f-food-med" data-bind="food.med"><option value="0" ${+F.med===0?'selected':''}>gramas (g)</option>${f.u.map((u,i)=>`<option value="${i+1}" ${+F.med===i+1?'selected':''}>${esc(u[0])} (${fmt(u[1])} g)</option>`).join('')}</select></label></div>
+      ${f.fonte==='Open Food Facts'?'<p class="note">Valores do Open Food Facts, preenchidos por voluntários. Confira com a embalagem; se algo estiver diferente, toque em Editar valores.</p>':''}
       <div class="prev" id="prev">${prevHTML()}</div>
       <button class="primary" data-act="addFood">${F.editId?'Salvar alteração':'Adicionar em '+esc(F.ref)}</button></div>`;
   else add=`<input id="f-food-q" data-bind="food.q" value="${esc(F.q)}" placeholder="Buscar alimento: ex. frango, arroz, ovo" aria-label="Buscar alimento" autocomplete="off" type="search">
@@ -1348,6 +1414,7 @@ function vComida(){
       ${(()=>{const its=doc.itens.filter(i=>i.ref===F.ref);if(!its.length)return '';const tm=totais(its);
         return `<div class="ja"><div class="row between"><span class="lbl">Já lançado ${naRef(F.ref)}</span><span class="num ja-t">${fmt(tm.kcal,0)} kcal · P ${fmt(tm.p,0)} g</span></div>
         ${its.map(i=>`<div class="ja-i"><span class="t">${esc(i.nome)}</span><span class="num">${i.qt!=null?qtTxt(i)+' · ':''}${fmt(i.kcal,0)} kcal</span></div>`).join('')}</div>`})()}
+      <button class="scanbtn" data-act="scanAbrir"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 8v8M10 8v8M13 8v8M16.5 8v8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Ler código de barras</button>
       <div id="res" class="stat" style="gap:6px">${resHTML()}</div>
       <button class="ghost small" style="align-self:flex-start" data-act="custom">Não achou? Cadastrar alimento</button>`;
   return `
@@ -1490,7 +1557,7 @@ function vMetas(){
     <div class="setbtns"><button class="small" data-act="exportar">Exportar meus dados</button><label class="btnlike" for="f-import">Importar dados</label><input type="file" id="f-import" accept="application/json,.json" hidden></div>
     ${DEMO?'':`<div class="setbtns"><button class="small" data-act="sair">Sair</button><button class="ghost small danger" data-act="excluirConta" data-confirm="1">Excluir minha conta</button></div><p class="note">Excluir a conta apaga para sempre todos os seus registros.</p>`}
   </section>
-  <section class="card"><h3>Sobre</h3><p class="note">Valores nutricionais aproximados com base na Tabela Brasileira de Composição de Alimentos (TACO, NEPA/Unicamp) e no FoodData Central (USDA). Faixas de bioimpedância com referência da Omron. Este app não substitui orientação de médico, nutricionista ou educador físico.</p>
+  <section class="card"><h3>Sobre</h3><p class="note">Valores nutricionais aproximados com base na Tabela Brasileira de Composição de Alimentos (TACO, NEPA/Unicamp) e no FoodData Central (USDA). Produtos lidos pelo código de barras vêm do Open Food Facts (licença ODbL). Faixas de bioimpedância com referência da Omron. Este app não substitui orientação de médico, nutricionista ou educador físico.</p>
     <p class="note"><a href="privacidade.html">Política de privacidade</a> · <a href="termos.html">Termos de uso</a></p></section>`;
 }
 
@@ -1621,7 +1688,10 @@ document.addEventListener('click',e=>{
     sug(){const [id,n,med]=arg.split('|');Object.assign(D.food,{sel:id,n:s2(+n),med:String(med),editId:'',custom:false});render();document.getElementById('addcard')?.scrollIntoView({behavior:'smooth',block:'start'})},
     unpick(){Object.assign(D.food,{sel:'',editId:''});render()},
     custom(){Object.assign(D.food,{custom:true,editAlim:'',cn:D.food.q.trim(),cu:'',cp:'100',ck:'',cP:'',cc:'',cg:''});render()},
-    uncustom(){D.food.custom=false;D.food.editAlim='';render()},
+    uncustom(){D.food.custom=false;D.food.editAlim='';D.food.cb='';render()},
+    scanAbrir(){abrirScanner()},
+    scanFechar(){fecharScanner()},
+    scanBuscar(){achouCodigo($('#scan-cod').value)},
     editAlim(){const f=alim(D.food.sel);if(!f)return;const u=f.u[0],por=u?u[1]:100,r=x=>s2(Math.round(x*por/100*10)/10);
       Object.assign(D.food,{custom:true,editAlim:f.id,recalc:true,cn:f.nome,cp:s2(por),cu:u?u[0]:'',ck:r(f.k),cP:r(f.p),cc:r(f.c),cg:r(f.g)});render()},
     recalc(){D.food.recalc=!D.food.recalc},
@@ -1629,11 +1699,11 @@ document.addEventListener('click',e=>{
     saveCustom(){const F=D.food,nome=F.cn.trim(),por=num(F.cp),k=num(F.ck);if(!nome)return toast('Dê um nome ao alimento.');if(!por||por<=0)return toast('Informe o tamanho da porção em gramas.');if(k==null)return toast('Informe as calorias da porção.');
       const fx=x=>Math.round((num(x)||0)*100/por*10)/10,cu=F.cu.trim();
       if(F.editAlim){const orig=alim(F.editAlim);const u=(orig?orig.u:[]).slice();if((por!==100||cu)&&!u.some(x=>x[0]===(cu||'porção')&&x[1]===por))u.unshift([cu||'porção',por]);
-        const novo={id:F.editAlim,nome,k:fx(F.ck),p:fx(F.cP),c:fx(F.cc),g:fx(F.cg),u};
+        const novo={id:F.editAlim,nome,k:fx(F.ck),p:fx(F.cP),c:fx(F.cc),g:fx(F.cg),u,...(orig&&orig.cb?{cb:orig.cb}:{}),...(orig&&orig.fonte?{fonte:'Open Food Facts (corrigido)'}:{})};
         put('alimentos',{kind:'alimentos',itens:[...meusAlim().filter(x=>x.id!==novo.id),novo]});const n=F.recalc?recalcular(novo.id):0;
         Object.assign(D.food,{custom:false,editAlim:'',sel:novo.id});render();toast(n?`Valores salvos e ${n} ${n>1?'registros atualizados':'registro atualizado'}`:'Valores salvos');return}
       const id='u-'+slug(nome)+'-'+rid().slice(0,4);
-      const novo={id,nome,k:fx(F.ck),p:fx(F.cP),c:fx(F.cc),g:fx(F.cg),u:por!==100||cu?[[cu||'porção',por]]:[]};
+      const novo={id,nome,k:fx(F.ck),p:fx(F.cP),c:fx(F.cc),g:fx(F.cg),u:por!==100||cu?[[cu||'porção',por]]:[],...(F.cb?{cb:F.cb}:{})};F.cb='';
       put('alimentos',{kind:'alimentos',itens:[...meusAlim(),novo]});Object.assign(D.food,{custom:false,q:'',sel:id,editId:'',n:novo.u.length?'1':'100',med:novo.u.length?'1':'0'});render();toast('Alimento cadastrado')},
     addFood(){const F=D.food,f=alim(F.sel);if(!f)return;const qt=gramas(f,F.n,F.med);if(!qt||qt<=0)return toast('Informe a quantidade.');
       const m=macro(f,qt),doc=diaComida(F.day);

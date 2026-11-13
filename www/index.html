@@ -558,6 +558,25 @@ const GUIA={
  evite:['Balançar o tronco para subir o peso.'],
  dyn:{db:'w'},
  a:{h:[101,32],s:[100,44],p:[100,82],k:[101,105],a:[100,128],e:[102,64],w:[103,84]},b:{w:[114,48]}},
+'Supino na máquina':{m:'Peitoral, tríceps e frente do ombro',
+ como:['Ajuste o banco para as pegadas ficarem na altura do meio do peito.','Com as costas apoiadas, empurre as pegadas para a frente até quase estender os braços.','Volte devagar até sentir o peito alongar.'],
+ dicas:['Escápulas encaixadas para trás durante todo o movimento.','Solte o ar ao empurrar.'],
+ evite:['Tirar as costas do encosto.','Travar os cotovelos no final.'],
+ st:[['bench',62,100,102],['line',66,102,64,46,6]],dyn:{knob:'w'},
+ a:{h:[84,48],s:[82,60],p:[80,98],k:[110,96],a:[112,126],e:[70,66],w:[92,62]},b:{e:[104,62],w:[126,62]}},
+'Tríceps na polia com corda':{m:'Tríceps',
+ como:['De frente para a polia alta, segure a corda com as palmas viradas uma para a outra.','Com os cotovelos colados ao corpo, estenda os braços para baixo, abrindo a corda no final.','Volte devagar até os antebraços passarem um pouco da horizontal.'],
+ dicas:['Só o antebraço se move: os cotovelos ficam parados.','Tronco levemente inclinado à frente.'],
+ evite:['Usar o peso do corpo para empurrar.','Deixar os cotovelos abrirem para os lados.'],
+ st:[['line',136,4,136,130,4],['anchor',128,10]],dyn:{cable:[128,10,'w'],knob:'w'},
+ a:{h:[101,32],s:[100,44],p:[100,82],k:[101,105],a:[100,128],e:[103,66],w:[115,50]},b:{w:[110,85]}},
+'Crucifixo no peck deck':{m:'Peitoral',front:true,
+ como:['Sente com as costas apoiadas e ajuste o banco para as pegadas ficarem na altura do peito.','Com os cotovelos levemente dobrados, junte as pegadas à frente do peito.','Volte devagar até sentir o peito alongar, sem passar da linha do corpo.'],
+ dicas:['Pense em abraçar uma árvore.','Segure 1 segundo com as pegadas juntas.'],
+ evite:['Deixar o peso puxar os braços para trás demais.'],
+ st:[['box',82,90,36,6]],dyn:{knob:['w','w2']},
+ a:{h:[100,36],s:[100,48],p:[100,88],k:[92,98],a:[90,126],k2:[108,98],a2:[110,126],e:[80,48],w:[62,50],e2:[120,48],w2:[138,50]},
+ b:{e:[90,54],w:[98,56],e2:[110,54],w2:[102,56]}},
 'Prancha lateral':{m:'Oblíquos (lateral do abdômen) e glúteo médio',
  como:['Deite de lado e apoie o antebraço com o cotovelo logo abaixo do ombro.','Eleve o quadril até o corpo ficar reto da cabeça aos pés.','Segure o tempo combinado e troque de lado.'],
  dicas:['Se ficar difícil, apoie o joelho de baixo no chão.','Respire normalmente durante a prancha.'],
@@ -679,37 +698,101 @@ function vAuth(){const A=D.auth;
   <p class="note" style="text-align:center">Ao continuar, você concorda com os <a href="termos.html">Termos de uso</a> e a <a href="privacidade.html">Política de privacidade</a>.</p>`}
 
 /* ---------- cadastro inicial e plano de treino ---------- */
-const MODELOS={
-  2:{semana:{1:'Corpo inteiro A',3:'Cardio',4:'Corpo inteiro B',6:'Cardio'},treinos:{
-    'Corpo inteiro A':['Leg press 45°','Supino reto com halteres','Puxada frontal no pulley','Desenvolvimento sentado com halteres','Mesa flexora','Abdominal na máquina'],
-    'Corpo inteiro B':['Agachamento hack','Remada baixa sentada','Supino inclinado com halteres','Elevação pélvica na máquina','Rosca direta com halteres','Tríceps testa com halteres']}},
-  3:{semana:{1:'Superiores',2:'Cardio',3:'Inferiores',4:'Cardio',5:'Corpo inteiro'},treinos:{
-    'Superiores':['Supino reto com halteres','Puxada frontal no pulley','Desenvolvimento sentado com halteres','Remada baixa sentada','Rosca direta com halteres','Tríceps testa com halteres'],
-    'Inferiores':['Leg press 45°','Agachamento hack','Cadeira extensora','Mesa flexora','Elevação pélvica na máquina','Panturrilha no leg 90'],
-    'Corpo inteiro':['Cadeira extensora','Remada articulada na máquina','Elevação lateral','Cadeira abdutora','Rosca martelo','Prancha lateral']}},
-  4:{semana:{1:'Peito, ombro e tríceps',2:'Pernas e glúteos',3:'Cardio',4:'Costas e bíceps',5:'Posterior e glúteos',6:'Cardio'},treinos:null},
-  5:{semana:{1:'Peito, ombro e tríceps',2:'Pernas e glúteos',3:'Corpo inteiro',4:'Costas e bíceps',5:'Posterior e glúteos',6:'Cardio'},treinos:null}};
-function planoModelo(d){const m=clone(MODELOS[d]||MODELOS[4]);if(!m.treinos){m.treinos={...PLANO_PADRAO};delete m.treinos.Cardio;if(d===5)m.treinos['Corpo inteiro']=MODELOS[3].treinos['Corpo inteiro'].slice()}return m}
+/* ---------- triagem e gerador de plano de treino ---------- */
+// grupo, tipo (m = máquina/polia, h = halter/livre, c = peso do corpo), nível (2 = pede mais técnica), composto, evitar com dor em
+const EXMETA={
+ 'Supino reto com halteres':['peito','h',1,1,[]],'Supino inclinado com halteres':['peito','h',1,1,[]],'Supino na máquina':['peito','m',1,1,[]],'Crucifixo no peck deck':['peito','m',1,0,[]],
+ 'Desenvolvimento sentado com halteres':['ombro','h',1,1,['ombro']],'Elevação lateral':['ombro','h',1,0,[]],'Crucifixo inverso no peck deck':['ombro','m',1,0,[]],
+ 'Tríceps francês sentado':['triceps','h',1,0,['ombro']],'Tríceps testa com halteres':['triceps','h',1,0,[]],'Tríceps na polia com corda':['triceps','m',1,0,[]],
+ 'Leg press 45°':['quadriceps','m',1,1,[]],'Agachamento hack':['quadriceps','m',1,1,['joelho']],'Agachamento no smith':['quadriceps','m',2,1,['joelho','lombar']],'Cadeira extensora':['quadriceps','m',1,0,['joelho']],
+ 'Afundo búlgaro no banco':['gluteo','h',2,1,['joelho']],'Elevação pélvica na máquina':['gluteo','m',1,1,[]],'Leg press 45° com pés altos':['gluteo','m',1,1,[]],'Coice na polia':['gluteo','m',1,0,['lombar']],'Cadeira abdutora':['gluteo','m',1,0,[]],
+ 'Levantamento terra romeno':['posterior','h',2,1,['lombar']],'Mesa flexora':['posterior','m',1,0,[]],'Cadeira flexora':['posterior','m',1,0,[]],
+ 'Puxada frontal no pulley':['costas','m',1,1,[]],'Remada baixa sentada':['costas','m',1,1,[]],'Remada articulada na máquina':['costas','m',1,1,[]],'Remada unilateral com halter':['costas','h',1,1,[]],'Remada curvada com halteres':['costas','h',2,1,['lombar']],
+ 'Rosca direta na polia':['biceps','m',1,0,[]],'Rosca Scott na máquina':['biceps','m',1,0,[]],'Rosca direta com halteres':['biceps','h',1,0,[]],'Rosca martelo':['biceps','h',1,0,[]],
+ 'Panturrilha sentada na máquina':['panturrilha','m',1,0,[]],'Panturrilha no leg 90':['panturrilha','m',1,0,[]],
+ 'Abdominal na máquina':['core','m',1,0,['lombar']],'Prancha lateral':['core','c',1,0,[]]};
+// * = começa por um exercício composto (multiarticular)
+const MOLDES={
+ 'Corpo inteiro A':['quadriceps*','peito*','costas*','posterior','ombro','core','triceps','biceps'],
+ 'Corpo inteiro B':['gluteo*','costas*','peito*','quadriceps','ombro','posterior','biceps','core'],
+ 'Corpo inteiro C':['quadriceps*','costas*','peito*','gluteo','ombro','triceps','panturrilha','core'],
+ 'Superiores A':['peito*','costas*','ombro*','costas*','peito','ombro','biceps','triceps'],
+ 'Superiores B':['costas*','peito*','ombro','costas','peito','triceps','biceps','ombro'],
+ 'Inferiores A':['quadriceps*','gluteo*','posterior','quadriceps','gluteo','panturrilha','core'],
+ 'Inferiores B':['gluteo*','posterior*','quadriceps*','posterior','gluteo','panturrilha','core'],
+ 'Peito, ombro e tríceps':['peito*','peito*','ombro*','ombro','triceps','triceps','peito','core'],
+ 'Costas e bíceps':['costas*','costas*','costas*','ombro','biceps','biceps','core'],
+ 'Pernas e glúteos':['quadriceps*','quadriceps*','gluteo*','quadriceps','gluteo','panturrilha','core'],
+ 'Posterior e glúteos':['gluteo*','gluteo*','posterior*','posterior','gluteo','core'],
+ 'Empurrar A':['peito*','ombro*','peito','ombro','triceps','triceps'],'Empurrar B':['peito*','peito*','ombro','ombro','triceps','core'],
+ 'Puxar A':['costas*','costas*','costas','ombro','biceps','biceps'],'Puxar B':['costas*','costas*','ombro','biceps','biceps','core'],
+ 'Pernas A':['quadriceps*','gluteo*','posterior','quadriceps','panturrilha','core'],'Pernas B':['gluteo*','posterior*','quadriceps*','gluteo','panturrilha','core']};
+const FOCO_GRUPOS={gluteos:['gluteo'],pernas:['quadriceps','posterior'],bracos:['biceps','triceps'],costas:['costas'],abdomen:['core']};
+function divisao(R){const d=+R.dias,f=R.foco||[],inf=f.includes('gluteos')||f.includes('pernas');
+  if(d<=2)return ['Corpo inteiro A','Corpo inteiro B'];
+  if(d===3)return R.exp==='ini'?['Corpo inteiro A','Corpo inteiro B','Corpo inteiro C']:inf?['Inferiores A','Superiores A','Inferiores B']:['Superiores A','Inferiores A','Corpo inteiro A'];
+  if(d===4)return inf?['Peito, ombro e tríceps','Pernas e glúteos','Costas e bíceps','Posterior e glúteos']:['Superiores A','Inferiores A','Superiores B','Inferiores B'];
+  if(d===5)return ['Peito, ombro e tríceps','Pernas e glúteos','Costas e bíceps','Posterior e glúteos',inf?'Inferiores A':'Corpo inteiro A'];
+  return ['Empurrar A','Puxar A','Pernas A','Empurrar B','Puxar B','Pernas B']}
+function gerarPlano(R){
+  const N={30:4,45:5,60:6,75:7}[R.tempo]||6,les=R.lesao||[],usados={},treinos={};
+  const pref={maquinas:{m:3,h:0,c:1},misto:{m:1,h:1,c:1},livres:{m:0,h:3,c:1}}[R.equip]||{m:1,h:1,c:1};
+  const pode=([g,t,n,comp,ev])=>!ev.some(x=>les.includes(x))&&(n<2||R.exp==='ava'||(R.exp==='int'&&R.equip==='livres'));
+  divisao(R).forEach(nome=>{
+    let slots=MOLDES[nome].slice();
+    (R.foco||[]).forEach(f=>{const gs=(FOCO_GRUPOS[f]||[]).filter(g=>slots.some(s=>s.replace('*','')===g));if(gs.length)slots.splice(2,0,...gs)});
+    const dia=[];
+    for(const s of slots){if(dia.length>=N)break;const g=s.replace('*',''),quer=s.endsWith('*');
+      let melhor=null,nota=-1e9;
+      Object.entries(EXMETA).forEach(([nm,m],i)=>{if(m[0]!==g||dia.includes(nm)||!pode(m))return;
+        const sc=(pref[m[1]]||0)+(quer?(m[3]?3:-1):(m[3]?0:1))-(usados[nm]||0)*2-i*0.001;if(sc>nota){nota=sc;melhor=nm}});
+      if(melhor){dia.push(melhor);usados[melhor]=(usados[melhor]||0)+1}}
+    if((R.foco||[]).includes('abdomen')&&!dia.some(x=>EXMETA[x][0]==='core')){const c=Object.keys(EXMETA).find(x=>EXMETA[x][0]==='core'&&pode(EXMETA[x]));if(c)dia.push(c)}
+    treinos[nome]=dia.map((x,i)=>[x,i]).sort((p,q)=>(EXMETA[q[0]][3]-EXMETA[p[0]][3])||(p[1]-q[1])).map(x=>x[0])});
+  const DIAS={2:[1,4],3:[1,3,5],4:[1,2,4,5],5:[1,2,3,4,5],6:[1,2,3,4,5,6]}[+R.dias]||[1,3,5];
+  const semana={};Object.keys(treinos).forEach((n,i)=>{semana[DIAS[i]]=n});
+  const livres=[3,6,2,4,5,1].filter(d=>!semana[d]);(livres.slice(0,+R.cardio||0)).forEach(d=>{semana[d]='Cardio'});
+  return {semana,treinos}}
+const ONB_OPTS={
+  sexo:[['f','Feminino'],['m','Masculino']],
+  exp:[['ini','Comecei agora ou menos de 6 meses'],['int','De 6 meses a 2 anos'],['ava','Mais de 2 anos']],
+  dias:[['2','2 dias'],['3','3 dias'],['4','4 dias'],['5','5 dias'],['6','6 dias']],
+  tempo:[['30','30 min'],['45','45 min'],['60','1 hora'],['75','Mais de 1 hora']],
+  equip:[['maquinas','Prefiro máquinas'],['misto','Máquinas e halteres'],['livres','Prefiro pesos livres']],
+  foco:[['gluteos','Glúteos'],['pernas','Pernas'],['bracos','Braços'],['costas','Costas e postura'],['abdomen','Abdômen']],
+  lesao:[['joelho','Joelho'],['ombro','Ombro'],['lombar','Lombar']],
+  cardio:[['0','Não quero'],['2','2 vezes'],['3','3 vezes']]};
+function vOnb(){const O=D.onb,ref=!!O.refazer,p=O.passo||1;
+  const ch=(k,v,l)=>`<button class="chip ${String(O[k])===String(v)?'on':''}" data-act="onb:${k}|${v}">${l}</button>`;
+  const mc=(k,v,l)=>`<button class="chip ${(O[k]||[]).includes(v)?'on':''}" data-act="onbT:${k}|${v}" aria-pressed="${(O[k]||[]).includes(v)}">${l}</button>`;
+  const grp=(t,k,multi,sub)=>`<div class="stat" style="gap:6px"><span class="lbl">${t}</span>${sub?`<span class="note">${sub}</span>`:''}<div class="chips">${ONB_OPTS[k].map(([v,l])=>(multi?mc:ch)(k,v,l)).join('')}</div></div>`;
+  const tot=3,ini=ref?2:1,barra=`<div class="bar"><i style="width:${(p-ini+1)/(tot-ini+1)*100}%"></i></div>`;
+  const tit={1:'Sobre você',2:'Seu treino',3:'Foco e cuidados'}[p];
+  let corpo='';
+  if(p===1)corpo=`<div class="fields">${inp('onb.nome','Seu nome','autocomplete="given-name"')}</div>
+    ${grp('Sexo','sexo')}
+    <div class="fields">${inp('onb.idade','Idade','inputmode="numeric"')}${inp('onb.altura','Altura (cm)','inputmode="numeric"')}${inp('onb.peso','Peso atual (kg)',dec)}</div>
+    <div class="stat" style="gap:6px"><span class="lbl">Seu objetivo</span><div class="chips">${ch('obj','perder','Perder gordura')}${ch('obj','ganhar','Ganhar massa')}${ch('obj','manter','Manter e definir')}</div></div>`;
+  if(p===2)corpo=`${grp('Há quanto tempo você treina musculação?','exp')}${grp('Quantos dias por semana você consegue treinar?','dias')}${grp('Quanto tempo por treino?','tempo')}${grp('Que tipo de exercício você prefere?','equip',false,'Máquinas guiam o movimento e são mais fáceis de executar.')}`;
+  if(p===3)corpo=`${grp('Quer dar mais atenção a alguma parte?','foco',true,'Escolha até 2, ou nenhuma para um treino equilibrado.')}${grp('Sente dor ou tem lesão em algum lugar?','lesao',true,'O plano evita exercícios que forçam essas regiões. Com dor, procure um profissional antes de treinar.')}${grp('Quantas vezes de cardio por semana?','cardio')}`;
+  return `${ref||p>1?'':`<section class="card g g-green"><h3>Vamos começar</h3><h2>${p===1?'Monte seu diário em 2 minutos':tit}</h2><p class="note">${p===1?'Com suas respostas o app calcula suas metas e monta um treino só seu. Você pode mudar tudo depois.':'Estas respostas definem a divisão, os exercícios e a quantidade de cada treino.'}</p></section>`}
+  <section class="card">${ref?`<div class="row between"><h2>Refazer meu plano</h2><button class="ghost small" data-act="onbSair">Cancelar</button></div>`:''}
+    <div class="row between"><h3>${tit}</h3><span class="note">${p-ini+1} de ${tot-ini+1}</span></div>${barra}
+    ${corpo}
+    ${O.erro?`<div class="hint keep"><span>${esc(O.erro)}</span></div>`:''}
+    <div class="setbtns">${p>ini?`<button data-act="onbPasso:-1">Voltar</button>`:''}</div>
+    ${p<3?`<button class="primary go" data-act="onbPasso:1">Continuar</button>`:`<button class="primary go" data-act="onbFim" ${ref?'data-confirm="1"':''}>${ref?'Trocar meu plano':'Criar meu plano'}</button>`}
+    ${ref?'<p class="note">O plano atual será substituído. Seu histórico de treinos não muda.</p>':'<p class="note">Este app ajuda a acompanhar seus hábitos e não substitui a orientação de médico, nutricionista ou educador físico.</p>'}
+  </section>
+  ${ref||p>1?'':`<section class="card"><h3>Já usava o Diário do Shape?</h3><p class="note">Se você exportou seus dados de outra versão, importe aqui para continuar de onde parou.</p><label class="btnlike" for="f-import">Importar dados</label><input type="file" id="f-import" accept="application/json,.json" hidden></section>
+  ${DEMO?'':`<button class="ghost" data-act="sair">Sair da conta</button>`}`}`}
+
 function aplicarPlano(){const pl=(S.docs.perfil&&S.docs.perfil.plano)||{semana:SEMANA_PADRAO,treinos:PLANO_PADRAO};
   PLANO={...pl.treinos,'Cardio':[]};SEMANA={0:null,...pl.semana};TPL=Object.keys(PLANO)}
 const getPl=()=>{const p=S.docs.perfil||{};if(p.plano)return clone(p.plano);const t={...PLANO_PADRAO};delete t.Cardio;return {semana:{...SEMANA_PADRAO},treinos:clone(t)}};
 const savePlano=pl=>put('perfil',{...perfil(),plano:pl});
-function vOnb(){const O=D.onb;const ch=(k,v,l)=>`<button class="chip ${String(O[k])===String(v)?'on':''}" data-act="onb:${k}|${v}">${l}</button>`;
-  return `<section class="card g g-green"><h3>Vamos começar</h3><h2>Monte seu diário em 1 minuto</h2><p class="note">Com esses dados o app calcula suas metas de calorias e proteína e monta um plano de treino. Você pode mudar tudo depois.</p></section>
-  <section class="card">
-    <div class="fields">${inp('onb.nome','Seu nome','autocomplete="given-name"')}</div>
-    <div class="stat" style="gap:6px"><span class="lbl">Sexo</span><div class="chips">${ch('sexo','f','Feminino')}${ch('sexo','m','Masculino')}</div></div>
-    <div class="fields">${inp('onb.idade','Idade','inputmode="numeric"')}${inp('onb.altura','Altura (cm)','inputmode="numeric"')}${inp('onb.peso','Peso atual (kg)',dec)}</div>
-    <div class="stat" style="gap:6px"><span class="lbl">Seu objetivo</span><div class="chips">${ch('obj','perder','Perder gordura')}${ch('obj','ganhar','Ganhar massa')}${ch('obj','manter','Manter e definir')}</div></div>
-    <div class="stat" style="gap:6px"><span class="lbl">Quantos dias de musculação por semana?</span><div class="chips">${[2,3,4,5].map(n=>ch('dias',n,n+' dias')).join('')}</div></div>
-    ${O.erro?`<div class="hint keep"><span>${esc(O.erro)}</span></div>`:''}
-    <button class="primary go" data-act="onbFim">Criar meu plano</button>
-    <p class="note">Este app ajuda a acompanhar seus hábitos e não substitui a orientação de médico, nutricionista ou educador físico.</p>
-  </section>
-  <section class="card"><h3>Já usava o Diário do Shape?</h3><p class="note">Se você exportou seus dados de outra versão, importe aqui para continuar de onde parou.</p><label class="btnlike" for="f-import">Importar dados</label><input type="file" id="f-import" accept="application/json,.json" hidden></section>
-  ${DEMO?'':`<button class="ghost" data-act="sair">Sair da conta</button>`}`}
 function vPlano(){const pl=getPl(),nomes=Object.keys(pl.treinos);const DS=[1,2,3,4,5,6,0],DN=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-  if(!D.planoAberto)return `<section class="card"><div class="row between"><h3>Meu plano semanal</h3><button class="ghost small" data-act="planoAbrir">Editar plano</button></div>
+  if(!D.planoAberto)return `<section class="card"><div class="row between"><h3>Meu plano semanal</h3><div class="setbtns"><button class="ghost small" data-act="refazer">Refazer</button><button class="ghost small" data-act="planoAbrir">Editar</button></div></div>
     <div class="semana">${DS.map(d=>`<div><span class="lbl">${DN[d]}</span><span>${esc(pl.semana[d]||'Descanso')}</span></div>`).join('')}</div></section>`;
   const opts=sel=>['','Cardio',...nomes].map(n=>`<option value="${esc(n)}" ${n===(sel||'')?'selected':''}>${n?esc(n):'Descanso'}</option>`).join('');
   const lib=Object.keys(GUIA).sort((a,b)=>a.localeCompare(b,'pt'));
@@ -763,7 +846,7 @@ const BIO0=()=>({date:today(),kg:'',cintura:'',gord:'',musc:'',visc:'',tmb:'',id
 const D={tab:'hoje',peso:BIO0(),
   food:{day:today(),ref:'Almoço',nome:'',kcal:'',p:'',c:'',g:'',q:'',sel:'',n:'',med:'0',editId:'',custom:false,cal:false,mes:today().slice(0,7),cn:'',cu:'',cp:'100',ck:'',cP:'',cc:'',cg:''},treino:null,perfil:null,guia:'',sx:0,sin:{},restEnd:0,restTot:90,restDur:90,resumo:null,planoAberto:false,
   auth:{modo:'entrar',email:'',senha:'',codigo:'',nova:'',erro:'',ok:'',busy:false},
-  onb:{nome:'',sexo:'f',idade:'',altura:'',peso:'',obj:'perder',dias:'4',erro:''}};
+  onb:{passo:1,nome:'',sexo:'f',idade:'',altura:'',peso:'',obj:'perder',exp:'ini',dias:'3',tempo:'60',equip:'maquinas',foco:[],lesao:[],cardio:'2',erro:''}};
 function setPath(path,val){const ks=path.split('.');let o=D;for(let i=0;i<ks.length-1;i++)o=o[ks[i]];o[ks[ks.length-1]]=val}
 const v=path=>esc(path.split('.').reduce((o,k)=>o==null?'':o[k],D)??'');
 const inp=(path,label,extra='')=>`<label>${label}<input id="f-${path.replace(/\./g,'-')}" data-bind="${path}" value="${v(path)}" ${extra}></label>`;
@@ -1395,10 +1478,10 @@ function render(){
   if(!logado)html=vAuth();
   else if(!S.ready)html='<section class="card"><p class="note">Carregando seus dados…</p></section>';
   else if(!S.docs.perfil)html=vOnb();
-  else{html={hoje:vHoje,peso:vPeso,treino:vTreino,comida:vComida,metas:vMetas,sessao:vSessao}[D.tab]();app=true}
+  else{html={hoje:vHoje,peso:vPeso,treino:vTreino,comida:vComida,metas:vMetas,sessao:vSessao,triagem:vOnb}[D.tab]();app=true}
   document.body.classList.toggle('sem-abas',!app);
   $('#hoje-label').textContent=app?(P.nome?`Olá, ${P.nome} · `:'')+fdate(today(),{weekday:'long',day:'numeric',month:'long'}):'';
-  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.act==='tab:'+(D.tab==='sessao'?'treino':D.tab)));
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.act==='tab:'+(D.tab==='sessao'||D.tab==='triagem'?'treino':D.tab)));
   $('#view').innerHTML=html;
   setStatus();
   try{wake()}catch(e){}
@@ -1432,14 +1515,21 @@ document.addEventListener('click',e=>{
     authModo(){Object.assign(D.auth,{modo:arg,erro:'',ok:''});render()},
     authGo(){authGo()},
     onb(){const [k,v]=arg.split('|');D.onb[k]=v;render()},
-    onbFim(){const O=D.onb,idade=num(O.idade),alt=num(O.altura),kg=num(O.peso),nome=(O.nome||'').trim();
-      if(!nome||!idade||!alt||!kg){O.erro='Preencha nome, idade, altura e peso.';return render()}
-      if(idade<14||idade>100||alt<120||alt>230||kg<30||kg>300){O.erro='Confira os números: idade em anos, altura em centímetros e peso em quilos.';return render()}
-      const dias=+O.dias,tmb=Math.round(10*kg+6.25*alt-5*idade+(O.sexo==='m'?5:-161)),fat={2:1.375,3:1.45,4:1.55,5:1.6}[dias]||1.5;
+    onbT(){const [k,v]=arg.split('|');const a=D.onb[k]||[];const on=a.includes(v);if(!on&&k==='foco'&&a.length>=2)return toast('Escolha até 2 focos.');D.onb[k]=on?a.filter(x=>x!==v):[...a,v];render()},
+    onbPasso(){const O=D.onb;O.erro='';if(+arg>0&&O.passo===1){const idade=num(O.idade),alt=num(O.altura),kg=num(O.peso);
+        if(!(O.nome||'').trim()||!idade||!alt||!kg){O.erro='Preencha nome, idade, altura e peso.';return render()}
+        if(idade<14||idade>100||alt<120||alt>230||kg<30||kg>300){O.erro='Confira os números: idade em anos, altura em centímetros e peso em quilos.';return render()}}
+      O.passo=Math.max(1,Math.min(3,(O.passo||1)+(+arg)));render();window.scrollTo(0,0)},
+    refazer(){const t=(perfil().triagem)||{};Object.assign(D.onb,{exp:'ini',dias:'3',tempo:'60',equip:'maquinas',foco:[],lesao:[],cardio:'2'},t,{passo:2,refazer:true,erro:''});D.tab='triagem';render();window.scrollTo(0,0)},
+    onbSair(){D.onb.refazer=false;D.tab='treino';render()},
+    onbFim(){const O=D.onb;const resp={exp:O.exp,dias:O.dias,tempo:O.tempo,equip:O.equip,foco:O.foco||[],lesao:O.lesao||[],cardio:O.cardio};const plano=gerarPlano(resp);
+      if(O.refazer){O.refazer=false;D.tab='treino';D.planoAberto=true;put('perfil',{...perfil(),triagem:resp,plano});toast('Plano novo pronto. Confira e ajuste o que quiser.');window.scrollTo(0,0);return}
+      const idade=num(O.idade),alt=num(O.altura),kg=num(O.peso),nome=(O.nome||'').trim();
+      const dias=+O.dias,tmb=Math.round(10*kg+6.25*alt-5*idade+(O.sexo==='m'?5:-161)),fat={2:1.375,3:1.45,4:1.55,5:1.6,6:1.7}[dias]||1.5;
       const kcal=Math.max(Math.round(tmb/50)*50,Math.round(tmb*fat*({perder:0.8,ganhar:1.1,manter:1}[O.obj]||1)/50)*50);
       const prot=Math.round(kg*(O.obj==='ganhar'?2:1.8)/5)*5;
       D.tab='hoje';put('p_'+today(),{kind:'peso',date:today(),kg});
-      put('perfil',{nome,sexo:O.sexo,idade,altura:alt,pesoInicial:kg,objetivo:O.obj,metaKcal:kcal,metaProt:prot,metaPeso:null,inicio:today(),plano:planoModelo(dias)});
+      put('perfil',{nome,sexo:O.sexo,idade,altura:alt,pesoInicial:kg,objetivo:O.obj,metaKcal:kcal,metaProt:prot,metaPeso:null,inicio:today(),triagem:resp,plano});
       toast('Tudo pronto, '+nome+'!')},
     sair(){if(SB)SB.auth.signOut()},
     excluirConta(){(async()=>{const r=await SB.rpc('excluir_conta');if(r.error)return toast('Não deu para excluir agora. Verifique a internet e tente de novo.');

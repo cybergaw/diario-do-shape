@@ -973,6 +973,9 @@ function vSessao(){
       :`<div class="hint">Exercício concluído ✓</div>${dn<tt?`<button class="primary go" data-act="sx:${proxEx(t,sx+1)}">Próximo exercício</button>`:''}`}
     <div class="sl">${e.sets.map((x,i)=>`<div class="setrow ${i===j?'atual':''}"><span class="num">${i+1}</span><span class="num">${feito(x)?`${x.kg!=null?fmt(x.kg)+' kg':'–'} × ${x.reps??'–'}${seg?' s':''}`:i===j?'agora':x.kg!=null?`planejado: ${fmt(x.kg)} kg`:'a fazer'}</span><span>${feito(x)?'✓':''}</span></div>`).join('')}</div>
     <div class="setbtns"><button class="small" data-act="sAddSet">+ Série</button>${e.sets.some(feito)?`<button class="ghost small" data-act="undoSet">Desfazer última série</button>`:''}${j>=0&&n>1?`<button class="ghost small" data-act="skipEx">Pular por enquanto</button>`:''}</div>
+    ${D.addEx?`<div class="exh"><select id="s-add" aria-label="Exercício para adicionar"><option value="">Escolher exercício…</option>${(()=>{const outros=TPL.filter(n=>n!==t.nome&&(PLANO[n]||[]).length);
+      return outros.map(n=>`<optgroup label="${esc(n)}">${PLANO[n].filter(x=>!t.ex.some(e=>e.nome===x)).map(x=>`<option>${esc(x)}</option>`).join('')}</optgroup>`).join('')+`<optgroup label="Todos os exercícios">${Object.keys(GUIA).sort((a,b)=>a.localeCompare(b,'pt')).filter(x=>!t.ex.some(e=>e.nome===x)).map(x=>`<option>${esc(x)}</option>`).join('')}</optgroup>`})()}</select><button class="small primary" style="flex:none" data-act="sAddEx">Adicionar</button></div>`
+      :`<button class="ghost small" style="align-self:flex-start" data-act="sAddExAbrir">+ Adicionar exercício de outro dia</button>`}
   </section>
   ${dn===tt?`<div class="hint">Todas as séries feitas. Ótimo treino!</div>`:''}
   <button class="${dn===tt?'primary ':''}go" data-act="finish">Finalizar treino</button>
@@ -1652,6 +1655,9 @@ document.addEventListener('click',e=>{
       put(t.id,d);window.scrollTo(0,0)},
     undoSet(){const t=ativa();if(!t)return;const d=clone(S.docs[t.id]);const e=d.ex[Math.min(D.sx||0,d.ex.length-1)];let k=-1;e.sets.forEach((x,i)=>{if(feito(x))k=i});if(k<0)return;e.sets[k].feito=false;D.sin={};D.restEnd=0;put(t.id,d)},
     sAddSet(){const t=ativa();if(!t)return;const d=clone(S.docs[t.id]);const e=d.ex[Math.min(D.sx||0,d.ex.length-1)];const l=e.sets[e.sets.length-1];e.sets.push({kg:l?l.kg:null,reps:null,feito:false});put(t.id,d)},
+    sAddExAbrir(){D.addEx=true;render()},
+    sAddEx(){const t=ativa(),sel=document.getElementById('s-add');if(!t||!sel||!sel.value)return toast('Escolha um exercício na lista.');
+      const d=clone(S.docs[t.id]);d.ex.push(planejar(sel.value,t.id));D.addEx=false;D.sx=d.ex.length-1;D.guia='';put(t.id,d);toast(sel.value+' adicionado');window.scrollTo(0,0)},
     skipEx(){const t=ativa();if(!t)return;const i=proxEx(t,(D.sx||0)+1);if(i===D.sx)return toast('Este é o único exercício pendente.');D.sx=i;D.guia='';render();window.scrollTo(0,0)},
     rest(){const v=+arg;if(!v)D.restEnd=0;else{D.restEnd+=v*1000;D.restTot=Math.max(15,D.restTot+v)}render()},
     finish(){const t=ativa();if(!t)return;const d=clone(S.docs[t.id]);
